@@ -110,5 +110,11 @@ wrapper(main)
 '''
 
 what's the source of complexity in a model this simple and deterministic?
+time.sleep(), ie, the os
+it's going to be processor dependent
+
+ok, so next step -- what are our variables?
+
+frequency first
 
 '''
