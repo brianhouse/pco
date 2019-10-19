@@ -4,6 +4,7 @@ import curses
 import random
 import time
 import math
+import threading
 from curses import wrapper
 from util import *
 
@@ -14,19 +15,14 @@ FRAMERATE = 0.01
 INCREMENT = 0.01    # this is the quantifier
 BUMP = 0.02
 
-# roughly every 100 frames or 1hz
-
 fireflies = []
 
-
 def main(screen):
-    for x in range(FIREFLIES):
-        fireflies.append(Firefly(random.random(), random.random(), random.random()))
+    Swarm().start()        
     height, width = screen.getmaxyx()
     curses.curs_set(0)
     while True:        
         screen.clear()
-        update()
 
         # # spatial version
         # for f, firefly in enumerate(fireflies):
@@ -39,19 +35,31 @@ def main(screen):
         # phase display version
         for f, firefly in enumerate(fireflies):
             x = firefly.id * 2
-            for y in range(0, int(firefly.phase * height)):
-                y = height - y - 1
-                screen.addstr(y, x, " ", curses.A_REVERSE)                               
+            y = height - int(firefly.phase * (height - 1)) - 1
+            log.debug(f"{x}, {y}")
+            screen.addstr(y, x, " ", curses.A_REVERSE)                               
 
         screen.refresh()
-        time.sleep(FRAMERATE)
+        time.sleep(0.01)
 
-def update():
-    for firefly in fireflies:
-        firefly.increment()
-    for firefly in fireflies:
-        if firefly.capacitor >= 1.0:
-            firefly.flash()             
+
+class Swarm(threading.Thread):
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.daemon = True 
+        for x in range(FIREFLIES):
+            fireflies.append(Firefly(random.random(), random.random(), random.random()))
+
+    def run(self):
+        while True:
+            for firefly in fireflies:
+                firefly.increment()
+            for firefly in fireflies:
+                if firefly.capacitor >= 1.0:
+                    firefly.flash()             
+            time.sleep(FRAMERATE)
+
 
 class Firefly():
 
