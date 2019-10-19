@@ -9,9 +9,12 @@ from util import *
 
 log.info("////////////////////////////////")
 
-FIREFLIES = 10
+FIREFLIES = 30
+FRAMERATE = 0.01
 INCREMENT = 0.01    # this is the quantifier
-BUMP = 0.01
+BUMP = 0.02
+
+# roughly every 100 frames or 1hz
 
 fireflies = []
 
@@ -23,19 +26,32 @@ def main(screen):
     curses.curs_set(0)
     while True:        
         screen.clear()
-        for firefly in fireflies:
-            firefly.increment()
-        for firefly in fireflies:
-            if firefly.capacitor >= 1.0:
-                firefly.flash()            
+        update()
+
+        # # spatial version
+        # for f, firefly in enumerate(fireflies):
+        #     x, y = int(firefly.x * width), int(firefly.y * height)
+        #     if firefly.lit:
+        #         screen.addstr(y, x, str(firefly.id), curses.A_REVERSE)
+        #     else:
+        #         screen.addstr(y, x, str(firefly.id))
+
+        # phase display version
         for f, firefly in enumerate(fireflies):
-            x, y = int(firefly.x * width), int(firefly.y * height)
-            if firefly.lit:
-                screen.addstr(y, x, str(firefly.id), curses.A_REVERSE)
-            else:
-                screen.addstr(y, x, str(firefly.id))
+            x = firefly.id * 2
+            for y in range(0, int(firefly.phase * height)):
+                y = height - y - 1
+                screen.addstr(y, x, " ", curses.A_REVERSE)                               
+
         screen.refresh()
-        time.sleep(0.01)
+        time.sleep(FRAMERATE)
+
+def update():
+    for firefly in fireflies:
+        firefly.increment()
+    for firefly in fireflies:
+        if firefly.capacitor >= 1.0:
+            firefly.flash()             
 
 class Firefly():
 
