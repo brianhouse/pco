@@ -11,10 +11,9 @@ from util import *
 log.info("////////////////////////////////")
 
 FIREFLIES = 30
-FRAMERATE = 0.01
-INCREMENT = 0.01    # this is the quantifier
-BUMP = 0.02
-RECOVERY = 5
+INCREMENT = 0.005
+BUMP = INCREMENT * 2
+RECOVERY = INCREMENT * 2
 
 fireflies = []
 
@@ -30,8 +29,8 @@ def main(screen):
             # spatial version
             # for f, firefly in enumerate(fireflies):
             #     x, y = int(firefly.x * width), int(firefly.y * height)
-            #     if firefly.lit:
-            #         screen.addstr(y, x, str(firefly.id), curses.A_REVERSE)
+            #     if firefly.phase > 0.5:
+            #         screen.addstr(y, x, str(firefly.id), curses.A_BOLD)
             #     else:
             #         screen.addstr(y, x, str(firefly.id))
 
@@ -66,14 +65,14 @@ class Firefly(threading.Thread):
     def run(self):
         while True:
             self.increment()
-            time.sleep(FRAMERATE)
+            time.sleep(INCREMENT)
 
     def increment(self):
         try:
             self.phase = min(self.phase + (INCREMENT * self.frequency), 1.0)
             self.capacitor = self.f(self.phase)
             if self.recovery > 0:
-                self.recovery -= 1
+                self.recovery -= INCREMENT
             if self.capacitor >= 1.0:
                 self.fire()             
         except Exception as e:
@@ -110,6 +109,6 @@ wrapper(main)
 
 '''
 
-ok, so the effect I'm seeing is precisely right -- how to get rid of that
+what's the source of complexity in a model this simple and deterministic?
 
 '''
