@@ -27,7 +27,7 @@ class Config(dict):
                 return
         self.conf = conf
         f = open(self.conf)                
-        data = yaml.load(f)
+        data = yaml.load(f, Loader=yaml.FullLoader)
         if data is not None:
             dict.__init__(self, data)
         f.close()
