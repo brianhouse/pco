@@ -1,125 +1,112 @@
-#!/usr/bin/env python3
+#!venv/bin/python
 
 import curses
 import random
 import time
-import math
-import threading
 from curses import wrapper
 from util import *
+from node import *
+from util.plotter import *
 
 log.info("////////////////////////////////")
 
+def wind(x):
+    return math.sin(math.pi * (x - .5)) * .5 + .5
+    # .5s are horiz shift, squish, and translate up, respectively
 
-FIREFLIES = 50
+def wind2(x):
+    return math.sin(math.pi * (x - .5)) + .5
 
-# percent of phase
-BUMP = 1/100
-RECOVERY = 20/100
+def f(x): # x is the phase
+    return math.sin((math.pi / 2) * x)
 
-# of display
-FRAMERATE = 1/24
+def f_inv(y): # y is the phase
+    return (2 / math.pi) * math.asin(y)
 
-fireflies = []
+
+def f3(x):
+    y = math.sin((math.pi / 2) * x * 2) * .5
+    if x > .5:
+        y *= -1
+        y += 1
+    return y
+
+def f3_inv(x):
+    x *= -1
+    x += 1
+    y = math.sin((math.pi / 2) * x * 2) * .5
+    if x < .5:
+        y *= -1
+        y += 1
+    y *= -1
+    y += 1
+    return y
+
+plot(wind, color="red")
+plot(wind2, color="blue")
+# plot(f_inv, color="red")
+# plot(f3, color="orange")
+# plot(f3_inv, color="white")
+# plot(f_inv)
+show_plots()
+
+
+SPATIAL = True
+PHASE = False
+FRAMERATE = 1/60
+
+# # 8 random nodes, all connected
+# for x in range(8):
+#     Node(random.random(), random.random(), random.random(), 1, 60 + x)
+# for node in nodes:
+#     Node.listeners.extend(nodes)
+
+
+# what should the fs be?
+covert_pulse = Node(10/100, 20/100, 0, 1, 36)
+covert_counter = Node(20/100, 20/100, 0, 3, 50)
+
+covert_counter.listen(covert_pulse)
+covert_pulse.listen(covert_counter)
+
+onset = Node(30/100, 20/100, 0, 2, 40)
+# onset.listen(covert_pulse)
+onset.listen(covert_counter)
+
+covert_pulse.listen(onset)
+
 
 def main(screen):
-    for x in range(FIREFLIES):
-        fireflies.append(Firefly(random.random(), random.random(), random.random()))
+    for node in nodes:
+        node.start()
     height, width = screen.getmaxyx()
     curses.curs_set(0)
-    while True:        
+    while True:
         screen.clear()
         try:
-            # # spatial version
-            # for f, firefly in enumerate(fireflies):
-            #     x, y = int(firefly.x * width), int(firefly.y * height)
-            #     if firefly.phase > 0.5:
-            #         screen.addstr(y, x, str(firefly.id), curses.A_REVERSE)
-            #     else:
-            #         screen.addstr(y, x, str(firefly.id))
-
-            # phase display version
-            for f, firefly in enumerate(fireflies):
-                x = firefly.id * 2
-                y = height - int(firefly.phase * (height - 1)) - 1
-                if firefly.recovery > 0:
-                    screen.addstr(y, x, "X")
-                else:
-                    screen.addstr(y, x, " ", curses.A_REVERSE)                               
+            if SPATIAL:
+                # spatial version
+                for f, node in enumerate(nodes):
+                    x, y = int(node.x * width), int(node.y * height)
+                    if node.phase < 0.1:
+                        screen.addstr(y, x, str(node.id), curses.A_REVERSE)
+                    else:
+                        screen.addstr(y, x, str(node.id))
+            if PHASE:
+                # phase display version
+                for f, node in enumerate(nodes):
+                    x = node.id * 2
+                    y = height - int(node.phase * (height - 1)) - 2
+                    if node.recovery > 0:
+                        screen.addstr(y, x, "X")
+                    else:
+                        screen.addstr(y, x, " ", curses.A_REVERSE)
         except Exception as e:
-            log.error(e)
+            log.error(log.exc(e))
 
         screen.refresh()
         time.sleep(FRAMERATE)
 
 
-class Firefly(threading.Thread):
-
-    last_id = 0
-
-    def __init__(self, x, y, phase, frequency=1.0):
-        threading.Thread.__init__(self, daemon=True)
-        self.id = Firefly.last_id
-        Firefly.last_id += 1
-        self.x = x
-        self.y = y
-        self.frequency = frequency
-        self.phase = phase
-        self.capacitor = self.f(self.phase)
-        self.recovery = 0.0
-        self.t_previous = time.time()
-        self.start()
-
-    def run(self):
-        while True:
-            t = time.time()
-            t_elapsed = t - self.t_previous
-            self.phase = min(self.phase + (t_elapsed * self.frequency), 1.0)
-            self.capacitor = self.f(self.phase)
-            if self.recovery > 0:
-                self.recovery -= t_elapsed
-            if self.capacitor >= 1.0:
-                self.fire()             
-            self.t_previous = t
-            time.sleep(0.001)
-
-    def bump(self):
-        if self.recovery <= 0 and self.capacitor < 1.0:
-            log.info(f"--> {self.id} got bumped")
-            self.capacitor = min(self.capacitor + BUMP, 1.0)
-            self.phase = self.f_inv(self.capacitor)
-
-    def fire(self):
-        log.info(f"FIRE {self.id}")
-        self.phase = 0.0
-        self.capacitor = 0.0
-        self.recovery = RECOVERY
-        for firefly in fireflies:
-            if firefly is self:
-                continue
-            firefly.bump()        
-
-    def f(self, x): # x is the phase
-        return math.sin((math.pi / 2) * x)
-
-    def f_inv(self, y): # y is the phase
-        return (2 / math.pi) * math.asin(y)
-
-    def __repr__(self):
-        return f"{self.id}: {self.phase}"
-
 
 wrapper(main)
-
-
-
-'''
-
-this is working well, and explicably, other than the weirdness in the lgos
-
-
-ok, so next step -- what are our variables?
-
-frequency first
-
-'''
